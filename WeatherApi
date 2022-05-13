@@ -1,1 +1,41 @@
 
+using Microsoft.Data.SqlClient; 
+using Newtonsoft.Json.Linq; 
+using System; 
+using System.Net; 
+namespace WeatherApi
+{
+    public class Program
+    {
+        public static void Main(string[] args)
+        {
+            string results;
+            string city;
+            Console.Write("Enter a city- ");
+            city = Console.ReadLine();
+            using (WebClient wc = new WebClient())
+            {
+                string searchtext = "select item.condition from weather.forecast where woeid in (select woeid from geo.places(1) where text='" + city + "') and u = 'c'";         
+
+                results = wc.DownloadString("https://query.weatherapis.com/v1/public/search?q=" + searchtext + "&format=json");
+                dynamic jo = JObject.Parse(results);
+                var items = jo.query.results.channel.item.condition;
+                Audit_weather(city, items.temp, items.text);
+
+                var temp = items.temp;
+                var code = items.code;
+                Console.WriteLine("\n Temperature in " + city + " is " + temp + "°C");
+                Console.WriteLine("\n Today" + " - " + items.text);
+                Console.Read();
+            }
+        }
+
+        public static void Audit_weather(string city, string temp, string text)
+        {
+            SqlConnection cn = new SqlConnection("Data Source=DELL-PC;initial catalog=AUDIT;User ID=sa;Password=sapass;Integrated Security=SSPI;");
+            SqlCommand cmd = new SqlCommand($"INSERT INTO AUDIT_WEATHER (CITY, TEMPERATURE, TEXT) VALUES ({city},{temp},{text}", cn);
+            cn.Open();
+            cmd.ExecuteNonQuery();
+        }
+    }
+}
